@@ -11,6 +11,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import time
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +20,23 @@ ROOT = Path(__file__).resolve().parents[1]
 def run(*args, cwd=ROOT, env=None):
     print("Running:", *map(str, args), flush=True)
     subprocess.run(list(map(str, args)), cwd=cwd, env=env, check=True)
+
+
+def update_submodules(target):
+    """Resume pinned direct submodules after temporary remote failures."""
+    delays = (5, 15, 30)
+    for attempt in range(len(delays) + 1):
+        try:
+            run("git", "submodule", "update", "--init", cwd=target)
+            return
+        except subprocess.CalledProcessError:
+            if attempt == len(delays):
+                raise
+            delay = delays[attempt]
+            print(f"Submodule update failed for {target.name} "
+                  f"(attempt {attempt + 1}/{len(delays) + 1}); "
+                  f"retrying in {delay} seconds.", flush=True)
+            time.sleep(delay)
 
 
 def python_at(home):
@@ -58,7 +76,7 @@ def checkout_dependencies():
         if pin.get("submodules"):
             # Match setup.ps1: only the direct Core dependencies are used.
             # AudioDSPTools' nested duplicate Eigen checkout is not needed.
-            run("git", "submodule", "update", "--init", cwd=target)
+            update_submodules(target)
         normalize_patch_inputs(target, pin.get("lf_patch_inputs", []))
     # Catalogue patches touch the separately cloned zoom-zt2 child, so every
     # checkout must exist before any cross-checkout patch is applied.

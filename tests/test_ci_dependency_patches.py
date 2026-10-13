@@ -7,10 +7,40 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import call, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "release"))
-from build_cross_platform import normalize_patch_inputs
+from build_cross_platform import normalize_patch_inputs, update_submodules
+
+
+class DependencyDownloadTests(unittest.TestCase):
+    def test_success_does_not_wait_or_repeat(self):
+        target = Path("pinned-core")
+        with patch("build_cross_platform.run") as run, patch("build_cross_platform.time.sleep") as sleep:
+            update_submodules(target)
+        run.assert_called_once_with("git", "submodule", "update", "--init", cwd=target)
+        sleep.assert_not_called()
+
+    def test_remote_failure_resumes_same_pinned_update(self):
+        target = Path("pinned-core")
+        failure = subprocess.CalledProcessError(1, ["git", "submodule", "update", "--init"])
+        with patch("build_cross_platform.run", side_effect=[failure, failure, None]) as run, \
+             patch("build_cross_platform.time.sleep") as sleep:
+            update_submodules(target)
+        self.assertEqual(run.call_args_list,
+                         [call("git", "submodule", "update", "--init", cwd=target)] * 3)
+        self.assertEqual(sleep.call_args_list, [call(5), call(15)])
+
+    def test_persistent_failure_stops_and_preserves_error(self):
+        failure = subprocess.CalledProcessError(1, ["git", "submodule", "update", "--init"])
+        with patch("build_cross_platform.run", side_effect=failure) as run, \
+             patch("build_cross_platform.time.sleep") as sleep:
+            with self.assertRaises(subprocess.CalledProcessError) as error:
+                update_submodules(Path("pinned-core"))
+        self.assertIs(error.exception, failure)
+        self.assertEqual(run.call_count, 4)
+        self.assertEqual(sleep.call_args_list, [call(5), call(15), call(30)])
 
 
 class DependencyPatchTests(unittest.TestCase):
