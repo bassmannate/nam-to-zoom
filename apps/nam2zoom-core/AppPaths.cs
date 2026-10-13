@@ -5,7 +5,11 @@ public sealed class AppPaths
     public string Resources { get; }
     public string Data { get; }
     public string Python { get; }
-    public string Trainer { get; }
+    public string DefaultTrainer { get; }
+    public string TrainingPreference => Path.Combine(Data, "training", "device.txt");
+    public string CudaTrainer => Path.Combine(Data, "training", "cuda-venv", "Scripts", "python.exe");
+    public string TrainingDevice => File.Exists(TrainingPreference) ? File.ReadAllText(TrainingPreference).Trim() : "auto";
+    public string Trainer => OperatingSystem.IsWindows() && TrainingDevice == "cuda" ? CudaTrainer : DefaultTrainer;
     public string Cache => Path.Combine(Data, "adapt-cache");
     public string Backup => Path.Combine(Data, "Backup");
 
@@ -21,7 +25,7 @@ public sealed class AppPaths
         Python = File.Exists(Path.Combine(Resources, "runtime", "portable.marker"))
             ? PythonAt(bundled, false)
             : PythonAt(Path.Combine(Resources, ".tooling", "stomphacks", ".venv"), true);
-        Trainer = File.Exists(Path.Combine(Resources, "runtime", "portable.marker"))
+        DefaultTrainer = File.Exists(Path.Combine(Resources, "runtime", "portable.marker"))
             ? Python : PythonAt(Path.Combine(Resources, ".tooling", "nam-train-venv"), true);
     }
 

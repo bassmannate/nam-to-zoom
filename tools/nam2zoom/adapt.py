@@ -245,7 +245,10 @@ def prepare_configs(dry: Path, wet: Path, work: Path, epochs: int,
     model = json.loads(model_template(profile).read_text(encoding="utf-8"))
     learning = json.loads(LEARNING_TEMPLATE.read_text(encoding="utf-8"))
     # MPS has not passed NAM training/export parity checks. Never select it implicitly.
-    learning["trainer"]["accelerator"] = "cpu" if sys.platform == "darwin" else "auto"
+    device = os.environ.get("NAM2ZOOM_TRAINING_DEVICE", "auto")
+    learning["trainer"]["accelerator"] = (
+        "cpu" if sys.platform == "darwin" or device == "cpu" else
+        "gpu" if device == "cuda" else "auto")
     learning["trainer"]["max_epochs"] = epochs
     learning["trainer"]["enable_progress_bar"] = True
     split = training_split(dry) if independent_validation else {

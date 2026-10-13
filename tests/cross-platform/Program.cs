@@ -1,5 +1,20 @@
 using Nam2ZoomDesktop;
 
+// Optional maintainer integration check: downloads CUDA into an isolated data
+// directory and exercises the same setup service used by the desktop dialog.
+if (args.FirstOrDefault() == "--setup-cuda") {
+    var setupPaths = new AppPaths(args[1], args[2]);
+    var setupBackend = new BackendService(setupPaths);
+    var setupRuntime = new TrainingRuntime(setupPaths, setupBackend);
+    await setupRuntime.SelectAsync(true, Console.WriteLine, default);
+    await setupRuntime.VerifyAsync(Console.WriteLine, default);
+    var probe = await setupBackend.ExecuteAsync(setupPaths.DefaultTrainer,
+        ["-c", "import torch; assert torch.version.cuda is None; print('Bundled CPU runtime preserved')"], Console.WriteLine);
+    probe.RequireSuccess();
+    Console.WriteLine("Portable CUDA setup and verification: PASS");
+    return 0;
+}
+
 if (args.FirstOrDefault() == "--child") {
     Console.OutputEncoding = System.Text.Encoding.UTF8;
     Console.WriteLine(args[1]);
@@ -14,6 +29,45 @@ try {
     var di = paths.TrainingDi();
     if (!File.Exists(di) || !di.StartsWith(paths.Data)) throw new Exception("Training resource escaped writable data");
     var backend = new BackendService(paths);
+    if (OperatingSystem.IsWindows()) {
+        var portable = Path.Combine(paths.Resources, "runtime");
+        Directory.CreateDirectory(portable);
+        File.WriteAllText(Path.Combine(portable, "portable.marker"), "test");
+        var trainingPaths = new AppPaths(paths.Resources, paths.Data);
+        var calls = new List<(string Python, string[] Args)>();
+        var failure = false;
+        var stopped = false;
+        var runtime = new TrainingRuntime(trainingPaths, backend, (python, command, report, token) => {
+            token.ThrowIfCancellationRequested();
+            var arguments = command.ToArray();
+            calls.Add((python, arguments));
+            if (stopped) throw new OperationCanceledException();
+            return Task.FromResult(new ProcessResult(failure && arguments.Any(a => a.Contains("assert torch.cuda")) ? 1 : 0, "test GPU result"));
+        });
+        await runtime.SelectAsync(false, _ => { }, default);
+        if (trainingPaths.Trainer != trainingPaths.DefaultTrainer || trainingPaths.TrainingDevice != "cpu" || calls.Count != 0)
+            throw new Exception("CPU selection did not preserve bundled runtime");
+        failure = true;
+        try { await runtime.SelectAsync(true, _ => { }, default); throw new Exception("Failed GPU accepted"); }
+        catch (InvalidOperationException) { }
+        if (trainingPaths.TrainingDevice != "cpu") throw new Exception("Failed setup changed preference");
+        failure = false; stopped = true;
+        try { await runtime.SelectAsync(true, _ => { }, default); throw new Exception("Cancelled GPU accepted"); }
+        catch (OperationCanceledException) { }
+        if (trainingPaths.TrainingDevice != "cpu") throw new Exception("Cancellation changed preference");
+        stopped = false; calls.Clear();
+        await runtime.SelectAsync(true, _ => { }, default);
+        if (calls.Count != 3 || calls[0].Python != trainingPaths.DefaultTrainer
+            || calls[1].Python != trainingPaths.CudaTrainer
+            || !calls[1].Args.Contains("torch==2.11.0+cu128")
+            || trainingPaths.Trainer != trainingPaths.CudaTrainer)
+            throw new Exception("CUDA setup/routing failed");
+        var reloaded = new AppPaths(paths.Resources, paths.Data);
+        if (reloaded.Trainer != trainingPaths.CudaTrainer) throw new Exception("GPU preference lost after restart");
+        await runtime.SelectAsync(false, _ => { }, default);
+        if (reloaded.Trainer != reloaded.DefaultTrainer) throw new Exception("CPU fallback failed");
+        Console.WriteLine("Training setup, verification failure, cancellation, persistence and CPU fallback: PASS");
+    }
     var result = await backend.ExecuteAsync(Environment.ProcessPath!, ["--child", "spaced/Кабинет/model name.nam"]);
     if (result.Exit != 7 || !result.Output.Contains("spaced/Кабинет/model name.nam")
         || !result.Output.Contains("stderr 2999") || !result.Output.Contains("stdout 2999"))

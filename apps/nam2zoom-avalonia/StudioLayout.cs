@@ -268,6 +268,9 @@ public sealed partial class MainWindow
         epochs.Width = double.NaN; epochs.Height = 40; epochs.HorizontalAlignment = HorizontalAlignment.Stretch;
 
         var epochRow = Field("Training epochs", epochs);
+        var trainingDevice = Button("Training device…", async () => { await ChooseTrainingDevice(); });
+        trainingDevice.IsVisible = OperatingSystem.IsWindows();
+        busyControls.Add(trainingDevice);
 
         var profiles = new Grid { ColumnDefinitions = new("*") };
 
@@ -285,7 +288,7 @@ public sealed partial class MainWindow
 
             Text("Compact leaves room for other effects. A2 Lite is disabled pending further testing.", 12, true),
 
-            epochRow } };
+            epochRow, trainingDevice } };
 
         Place(workspace, Card(new ScrollViewer { Content = settings,
 

@@ -194,6 +194,11 @@ public sealed partial class MainWindow : Window
         var folder = (await StorageProvider.OpenFolderPickerAsync(new() { Title = "Choose build output folder" })).FirstOrDefault()?.TryGetLocalPath();
         if (folder is null) return;
         cancellation = new(); cancel.IsEnabled = true;
+        if (OperatingSystem.IsWindows()) {
+            var training = new TrainingRuntime(vm.Paths, vm.Backend);
+            if (!training.HasPreference && !await ChooseTrainingDevice()) return;
+            await training.VerifyAsync(Report, cancellation.Token);
+        }
         var result = await vm.Banks.BuildAsync(vm.Models.ToArray(), folder, Profile, (int)(epochs.Value ?? 100),
             async (warnings, path) => {
                 if (path is not null) OpenFolder(path);
@@ -218,6 +223,25 @@ public sealed partial class MainWindow : Window
         deviceBusy = true;
         await vm.Banks.UninstallAsync(backup.IsChecked == true, Report);
         await Dialog("Removal complete", "Removal finished; see the log for verification or an already-absent bank.", false);
+    }
+    private async Task<bool> ChooseTrainingDevice()
+    {
+        var window = new Window { Title = "Training device", Width = 620, SizeToContent = SizeToContent.Height,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner, CanResize = false };
+        var cpu = new Button { Content = "Use CPU" };
+        var gpu = new Button { Content = "Enable NVIDIA GPU…" };
+        var close = new Button { Content = "Cancel", IsCancel = true };
+        cpu.Click += (_, _) => window.Close(false);
+        gpu.Click += (_, _) => window.Close(true);
+        close.Click += (_, _) => window.Close(null);
+        window.Content = new StackPanel { Margin = new Thickness(20), Spacing = 18, Children = {
+            new TextBlock { Text = "Choose CPU training or NVIDIA GPU acceleration.\n\nNVIDIA setup downloads several GB from PyTorch and needs internet access and a compatible NVIDIA driver. RTX 3060 is supported. Your choice is remembered; you can change it using Training device.\n\nCurrent choice: " + vm.Paths.TrainingDevice,
+                TextWrapping = Avalonia.Media.TextWrapping.Wrap }, Row(cpu, gpu, close) } };
+        var choice = await window.ShowDialog<bool?>(this);
+        if (choice is null) return false;
+        cancellation ??= new(); cancel.IsEnabled = true;
+        await new TrainingRuntime(vm.Paths, vm.Backend).SelectAsync(choice.Value, Report, cancellation.Token);
+        return true;
     }
     private string SafetyText() => "This replaces/removes the entire N2Z Bank effect. "
         + (backup.IsChecked == true ? "A full device backup will be saved in " + vm.Paths.Backup + ". "

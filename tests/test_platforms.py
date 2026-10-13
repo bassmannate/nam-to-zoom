@@ -30,6 +30,15 @@ class PlatformTests(unittest.TestCase):
             _, _, learning = adapt.prepare_configs(work / "dry.wav", work / "wet.wav", work, 100)
             self.assertEqual(json.loads(learning.read_text())["trainer"]["accelerator"], "cpu")
 
+    def test_windows_honors_training_device_selection(self):
+        for device, expected in (("cpu", "cpu"), ("cuda", "gpu"), ("auto", "auto")):
+            with self.subTest(device=device), tempfile.TemporaryDirectory() as temporary, \
+                    patch.object(sys, "platform", "win32"), \
+                    patch.dict(os.environ, {"NAM2ZOOM_TRAINING_DEVICE": device}):
+                work = Path(temporary)
+                _, _, learning = adapt.prepare_configs(work / "dry.wav", work / "wet.wav", work, 100)
+                self.assertEqual(json.loads(learning.read_text())["trainer"]["accelerator"], expected)
+
     def test_mock_ports_and_identity_require_no_midi_hardware(self):
         ports = choose_ports(["ZOOM MS Plus Series In"], ["ZOOM MS Plus Series Out"])
         self.assertTrue(ports.input_name.endswith("In"))

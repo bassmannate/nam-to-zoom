@@ -11,6 +11,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("portable", type=Path)
 parser.add_argument("work", type=Path)
 parser.add_argument("--profile", choices=("compact", "lite"), default="compact")
+parser.add_argument("--accelerator", choices=("cpu", "gpu"), default="cpu")
 args = parser.parse_args()
 root = args.portable.resolve(strict=True)
 work = args.work.resolve()
@@ -32,7 +33,7 @@ data, model, learning = adapt.prepare_configs(dry, wet, work, 1, profile=args.pr
 assert json.loads(model.read_text())["loss"]["mrstft_weight"] == .0005
 config = json.loads(learning.read_text())
 config["train_dataloader"].update(batch_size=2, drop_last=False)
-config["trainer"].update(accelerator="cpu", limit_train_batches=1,
+config["trainer"].update(accelerator=args.accelerator, limit_train_batches=1,
                          limit_val_batches=1, num_sanity_val_steps=0)
 learning.write_text(json.dumps(config))
 training = work / "training"
@@ -63,4 +64,4 @@ parity = unittest.TextTestRunner().run(unittest.defaultTestLoader.loadTestsFromT
     test_nam_core_parity.NamCoreParityTests))
 if not parity.wasSuccessful() or parity.skipped:
     raise RuntimeError("Trained student did not pass native/pedal-kernel numerical parity")
-print("Portable CPU training, student shape, and native rendering: PASS")
+print(f"Portable {args.accelerator} training, student shape, and native rendering: PASS")

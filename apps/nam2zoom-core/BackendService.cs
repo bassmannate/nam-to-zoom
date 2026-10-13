@@ -41,6 +41,7 @@ public sealed class BackendService(AppPaths paths)
         start.Environment["PYTHONUTF8"] = "1";
         start.Environment["PYTHONDONTWRITEBYTECODE"] = "1";
         start.Environment["NAM2ZOOM_DATA_DIR"] = paths.Data;
+        start.Environment["NAM2ZOOM_TRAINING_DEVICE"] = paths.TrainingDevice;
         var logs = Path.Combine(paths.Data, "logs");
         Directory.CreateDirectory(logs);
         start.Environment["NAM2ZOOM_PEDAL_LOG"] = Path.Combine(logs, "pedal_diy.log");

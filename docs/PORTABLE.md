@@ -7,7 +7,13 @@ PyTorch 2.11.0 from source takes too long. Do not move the executable out of its
 folder/bundle. Python, .NET, native rendering and training packages are included.
 No installer, compiler, Apple developer account or internet connection is needed
 for conversion. An NVIDIA driver is needed only for a CUDA-enabled Windows build.
-Default Windows builds use CPU; maintainers can request a bundled CUDA build.
+Windows asks you to choose CPU or NVIDIA GPU training before the first build.
+Use **Training device…** in Bank settings to change the choice later, including
+when upgrading from a CPU-only release. NVIDIA setup downloads several GB from
+the official PyTorch CUDA index into your user-data folder and requires a compatible
+NVIDIA driver. The bundled CPU runtime remains intact. Setup verifies a real GPU
+allocation before activating CUDA; failed or cancelled setup keeps the previous
+choice. Choose **Use CPU** to switch back. No separate CUDA toolkit is required.
 macOS training uses CPU. MPS is not enabled or validated.
 
 These macOS apps have no Developer ID signature or notarization. If macOS blocks
