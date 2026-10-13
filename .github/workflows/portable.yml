@@ -46,6 +46,13 @@ jobs:
           $python = uv python find --managed-python 3.12
           if ($LASTEXITCODE -ne 0) { throw 'Managed Python not found' }
           "BUILD_PYTHON=$python" >> $env:GITHUB_ENV
+      - name: Check release tooling before the full build
+        shell: pwsh
+        run: |
+          foreach ($test in @('test_macos_native_audit.py', 'test_release_build.py', 'test_ci_dependency_patches.py')) {
+            & $env:BUILD_PYTHON -B -m unittest discover -s tests -p $test
+            if ($LASTEXITCODE -ne 0) { throw "Release tooling check failed: $test" }
+          }
       - name: Build, bundle and verify portable app
         shell: pwsh
         env:

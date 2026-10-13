@@ -9,6 +9,8 @@ import subprocess
 import sys
 import tempfile
 
+from macos_native import audit_macos_bundle
+
 SOURCE = Path(__file__).resolve().parents[1]
 
 
@@ -18,27 +20,6 @@ def resource_root(payload, rid):
 
 def run(*args, env=None, cwd=None):
     subprocess.run(list(map(str, args)), env=env, cwd=cwd, check=True, timeout=600)
-
-
-def macos_library_names(linked):
-    """Read otool -L records, excluding every per-architecture filename header.
-
-    Universal binaries print a new unindented header for each architecture.
-    Library/install-name records are indented and carry version metadata.
-    Keep dylibs' own install names: absolute build paths there still fail audit.
-    """
-    for line in linked.splitlines():
-        if not line.strip() or not line[:1].isspace():
-            continue
-        name, separator, _ = line.strip().rpartition(" (compatibility version ")
-        if not separator or not name:
-            raise RuntimeError(f"Unexpected otool library record: {line}")
-        yield name
-
-
-def nonportable_macos_libraries(linked):
-    return [name for name in macos_library_names(linked)
-            if name.startswith("/") and not name.startswith(("/usr/lib/", "/System/Library/"))]
 
 
 def inside(resources, work):
@@ -133,16 +114,7 @@ def verify(payload, rid):
             # Refuse absolute native dependencies on Homebrew, CI workspaces or
             # developer installs. RPATH/loader-relative wheel dependencies and
             # macOS system libraries are allowed; imports exercise resolution.
-            for file in relocated.rglob("*"):
-                if not file.is_file() or file.is_symlink():
-                    continue
-                with file.open("rb") as stream:
-                    magic = stream.read(4)
-                if magic not in (b"\xcf\xfa\xed\xfe", b"\xfe\xed\xfa\xcf", b"\xca\xfe\xba\xbe", b"\xbe\xba\xfe\xca"):
-                    continue
-                linked = subprocess.check_output(["/usr/bin/otool", "-arch", "all", "-L", str(file)], text=True)
-                for dependency in nonportable_macos_libraries(linked):
-                    raise RuntimeError(f"Nonportable native dependency: {file}: {dependency}")
+            audit_macos_bundle(relocated, rid)
         env = os.environ.copy()
         env.update(PYTHONPATH=str(resources / "tools"), PYTHONDONTWRITEBYTECODE="1", PYTHONUTF8="1",
                    NAM2ZOOM_DATA_DIR=str(work / "user data"), MPLCONFIGDIR=str(work / "mpl-cache"),

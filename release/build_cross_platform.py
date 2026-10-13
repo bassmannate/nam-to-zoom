@@ -101,7 +101,8 @@ def build_intel_torch(python, work):
     run(python, "-m", "pip", "install", "-r", torch_source / "requirements.txt", env=env)
     env.update(USE_CUDA="0", USE_MPS="0", USE_DISTRIBUTED="0", BUILD_TEST="0",
                USE_KINETO="0", USE_OPENMP="0", USE_MKL="0", USE_MKLDNN="0",
-               BLAS="Accelerate", MAX_JOBS="3", PYTORCH_BUILD_VERSION="2.11.0", PYTORCH_BUILD_NUMBER="1")
+               # PyTorch's CMake option for Apple's Accelerate framework is vecLib.
+               BLAS="vecLib", MAX_JOBS="3", PYTORCH_BUILD_VERSION="2.11.0", PYTORCH_BUILD_NUMBER="1")
     run(python, "setup.py", "bdist_wheel", cwd=torch_source, env=env)
     wheels = list((torch_source / "dist").glob("torch-*.whl"))
     if len(wheels) != 1:
