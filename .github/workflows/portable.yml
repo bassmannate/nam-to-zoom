@@ -22,8 +22,7 @@ jobs:
             runner: windows-2025
           - rid: osx-arm64
             runner: macos-15
-          - rid: osx-x64
-            runner: macos-15-intel
+          # Intel macOS builds are paused while PyTorch 2.11.0 requires a slow source build.
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 350
     env:
@@ -87,7 +86,7 @@ jobs:
           pattern: nam2zoom-*
           merge-multiple: true
           path: artifacts
-      - name: Publish the three verified packages
+      - name: Publish the two verified packages
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -95,7 +94,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(find artifacts -maxdepth 1 -name '*.zip' | wc -l)" -eq 3
+          test "$(find artifacts -maxdepth 1 -name '*.zip' | wc -l)" -eq 2
           if ! gh release view "$VERSION_TAG" >/dev/null 2>&1; then
             gh release create "$VERSION_TAG" --verify-tag --title "nam2zoom $VERSION_TAG" --notes 'Portable cross-platform preview. macOS apps are unsigned/unnotarized; macOS USB-MIDI hardware verification is pending. See the included README for supported security approval and pedal safety instructions.'
           fi

@@ -1,8 +1,9 @@
 # Portable nam2zoom (cross-platform preview)
 
 Extract the complete ZIP. On Windows 10/11 x64, run `nam2zoom.exe`.
-On macOS 14 or later, open `nam2zoom.app`. Use the package matching your Mac:
-ARM64 for Apple Silicon or x64 for Intel. Do not move the executable out of its
+On an Apple Silicon Mac running macOS 14 or later, open `nam2zoom.app` from the
+ARM64 package. Intel Mac builds are temporarily disabled because compiling
+PyTorch 2.11.0 from source takes too long. Do not move the executable out of its
 folder/bundle. Python, .NET, native rendering and training packages are included.
 No installer, compiler, Apple developer account or internet connection is needed
 for conversion. An NVIDIA driver is needed only for a CUDA-enabled Windows build.

@@ -4,8 +4,10 @@ Cross-platform migration preview: the new .NET 10 Avalonia frontend lives in
 `apps/nam2zoom-avalonia`; the original WinForms app is preserved. See the
 [repository audit and migration plan](docs/CROSS_PLATFORM.md) and
 [portable Windows/macOS instructions](docs/PORTABLE.md). The
-`Portable Windows and macOS` Actions workflow builds three target-native ZIPs
-and publishes matching `vX.Y.Z` tags after all targets pass validation.
+`Portable Windows and macOS` Actions workflow builds two target-native ZIPs
+for Windows x64 and Apple Silicon Macs. Intel Mac builds are temporarily disabled
+because compiling PyTorch 2.11.0 from source takes too long. The workflow
+publishes matching `vX.Y.Z` tags after both targets pass validation.
 macOS builds and all macOS USB-MIDI operations require CI/manual validation;
 they are not claimed hardware-tested.
 
