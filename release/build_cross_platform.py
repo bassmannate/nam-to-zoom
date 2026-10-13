@@ -96,9 +96,18 @@ def build_intel_torch(python, work):
     torch_source = work / "pytorch"
     run("git", "clone", "--branch", "v2.11.0", "--depth", "1", "--recursive",
         "--shallow-submodules", "https://github.com/pytorch/pytorch.git", torch_source)
+    # NNPACK still uses FindPythonInterp/PYTHON_EXECUTABLE; modern PyTorch
+    # only supplies Python_EXECUTABLE. Pin both to the bundled build Python.
+    python_patch = ROOT / "patches/pytorch-build-python.patch"
+    run("git", "apply", "--check", python_patch, cwd=torch_source)
+    run("git", "apply", python_patch, cwd=torch_source)
     env = os.environ.copy()
     env["PIP_CONSTRAINT"] = str(ROOT / "release/macos-intel-constraints.txt")
     run(python, "-m", "pip", "install", "-r", torch_source / "requirements.txt", env=env)
+    # Exercise the generator's imports before starting thousands of C++ jobs.
+    peachpy_env = env.copy()
+    peachpy_env["PYTHONPATH"] = str(torch_source / "third_party/python-peachpy")
+    run(python, "-m", "peachpy.x86_64", "--help", cwd=torch_source, env=peachpy_env)
     env.update(USE_CUDA="0", USE_MPS="0", USE_DISTRIBUTED="0", BUILD_TEST="0",
                USE_KINETO="0", USE_OPENMP="0", USE_MKL="0", USE_MKLDNN="0",
                # PyTorch's CMake option for Apple's Accelerate framework is vecLib.

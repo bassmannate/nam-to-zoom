@@ -1,11 +1,15 @@
 """Exercise release build configuration and the final ZIP/checksum contract."""
 import hashlib
+import ast
 import os
 from pathlib import Path
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from types import SimpleNamespace
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,6 +18,55 @@ from build_cross_platform import archive_payload, build_intel_torch
 
 
 class ReleaseBuildTests(unittest.TestCase):
+    def test_pytorch_patch_pins_both_cmake_interpreter_names(self):
+        if not shutil.which("git"):
+            self.skipTest("Git unavailable")
+        # Exact defines block from the pinned PyTorch v2.11.0 helper.
+        original = """class CMake:
+    def generate(self):
+        CMake.defines(
+            args,
+            Python_EXECUTABLE=sys.executable,
+            TORCH_BUILD_VERSION=version,
+            **build_options,
+        )
+"""
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            helper = root / "tools/setup_helpers/cmake.py"
+            helper.parent.mkdir(parents=True)
+            helper.write_text(original, encoding="utf-8", newline="\n")
+            subprocess.run(["git", "init", "--quiet", str(root)], check=True)
+            patch_path = ROOT / "patches/pytorch-build-python.patch"
+            for args in (["--check", str(patch_path)], [str(patch_path)]):
+                subprocess.run(["git", "apply", *args], cwd=root, check=True, capture_output=True)
+            tree = ast.parse(helper.read_text())
+            statement = tree.body[0].body[0].body[0]
+            recorded = {}
+            def defines(args, **kwargs):
+                recorded.update(kwargs)
+            interpreter = str(root / "bundled python with spaces")
+            exec(compile(ast.Module(body=[statement], type_ignores=[]), str(helper), "exec"),
+                 {"CMake": SimpleNamespace(defines=defines),
+                  "sys": SimpleNamespace(executable=interpreter), "args": [],
+                  "version": "2.11.0", "build_options": {}})
+            self.assertEqual(recorded["Python_EXECUTABLE"], interpreter)
+            self.assertEqual(recorded["PYTHON_EXECUTABLE"], interpreter)
+
+    def test_generator_failure_stops_before_cpp_build(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            calls = []
+            failure = subprocess.CalledProcessError(1, ["python", "-m", "peachpy.x86_64"])
+            def run(*command, **kwargs):
+                calls.append(command)
+                if command[1:3] == ("-m", "peachpy.x86_64"):
+                    raise failure
+            with patch("build_cross_platform.run", side_effect=run):
+                with self.assertRaises(subprocess.CalledProcessError) as error:
+                    build_intel_torch(Path("python"), Path(temporary))
+            self.assertIs(error.exception, failure)
+            self.assertFalse(any("bdist_wheel" in command for command in calls))
+
     def test_intel_torch_build_preserves_version_and_uses_supported_apple_blas(self):
         with tempfile.TemporaryDirectory() as temporary:
             work = Path(temporary)
@@ -30,9 +83,16 @@ class ReleaseBuildTests(unittest.TestCase):
             with patch("build_cross_platform.run", side_effect=run), \
                  patch.dict(os.environ, {"BLAS": "Accelerate", "USE_CUDA": "1", "USE_OPENMP": "1"}):
                 build_intel_torch(python, work)
-            clone, requirements, build, install = calls
+            clone, patch_check, patch_apply, requirements, generator, build, install = calls
             self.assertIn("v2.11.0", clone[0])
             self.assertIn("--recursive", clone[0])
+            self.assertEqual(patch_check[0][:3], ("git", "apply", "--check"))
+            self.assertEqual(patch_apply[0][:2], ("git", "apply"))
+            self.assertEqual(patch_check[0][-1], ROOT / "patches/pytorch-build-python.patch")
+            self.assertEqual(patch_apply[0][-1], patch_check[0][-1])
+            self.assertEqual(generator[0], (python, "-m", "peachpy.x86_64", "--help"))
+            self.assertEqual(generator[1]["env"]["PYTHONPATH"],
+                             str(work / "pytorch/third_party/python-peachpy"))
             self.assertEqual(requirements[1]["env"]["PIP_CONSTRAINT"],
                              str(ROOT / "release/macos-intel-constraints.txt"))
             environment = build[1]["env"]
@@ -55,7 +115,7 @@ class ReleaseBuildTests(unittest.TestCase):
                 with patch("build_cross_platform.run") as run:
                     with self.assertRaisesRegex(RuntimeError, "exactly one wheel"):
                         build_intel_torch(work / "python", work)
-                self.assertEqual(run.call_count, 3)
+                self.assertEqual(run.call_count, 6)
 
     def test_windows_zip_layout_checksum_and_existing_output_guard(self):
         with tempfile.TemporaryDirectory() as temporary:

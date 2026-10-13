@@ -1,0 +1,11 @@
+diff --git a/tools/setup_helpers/cmake.py b/tools/setup_helpers/cmake.py
+--- a/tools/setup_helpers/cmake.py
++++ b/tools/setup_helpers/cmake.py
+@@ -414,6 +414,7 @@ class CMake:
+         CMake.defines(
+             args,
+             Python_EXECUTABLE=sys.executable,
++            PYTHON_EXECUTABLE=sys.executable,
+             TORCH_BUILD_VERSION=version,
+             **build_options,
+         )
