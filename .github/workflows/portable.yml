@@ -81,6 +81,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           pattern: nam2zoom-*
@@ -96,6 +97,11 @@ jobs:
           set -euo pipefail
           test "$(find artifacts -maxdepth 1 -name '*.zip' | wc -l)" -eq 2
           if ! gh release view "$VERSION_TAG" >/dev/null 2>&1; then
-            gh release create "$VERSION_TAG" --verify-tag --title "nam2zoom $VERSION_TAG" --notes 'Portable cross-platform preview. macOS apps are unsigned/unnotarized; macOS USB-MIDI hardware verification is pending. See the included README for supported security approval and pedal safety instructions.'
+            notes="release/notes/$VERSION_TAG.md"
+            if [ -f "$notes" ]; then
+              gh release create "$VERSION_TAG" --verify-tag --title "nam2zoom $VERSION_TAG" --notes-file "$notes"
+            else
+              gh release create "$VERSION_TAG" --verify-tag --title "nam2zoom $VERSION_TAG" --notes 'Portable cross-platform preview. macOS apps are unsigned/unnotarized; macOS USB-MIDI hardware verification is pending. See the included README for supported security approval and pedal safety instructions.'
+            fi
           fi
           gh release upload "$VERSION_TAG" artifacts/*.zip artifacts/*.sha256
