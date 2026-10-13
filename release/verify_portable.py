@@ -56,7 +56,6 @@ def inside(resources, work):
     from nam2zoom.hybrid import classify
     from nam2zoom.platforms import data_root, renderer
     from test_compact_shape import model
-    from test_lite_profiles import lite_model
     from msplus_midi import choose_ports
 
     assert Path(nam.cli.__file__).is_relative_to(resources / "runtime/python")
@@ -71,7 +70,7 @@ def inside(resources, work):
     pedal_diy.log("mock", "fixture.ZD2", 0x04001787, "N2Z Bank", "DRY-RUN-OK")
     assert Path(pedal_diy.LOGFILE).is_file()
     golden = json.loads((SOURCE / "release/precompiled/golden.json").read_text())
-    for profile, fixture in (("compact", model(3)), ("lite", lite_model())):
+    for profile, fixture in (("compact", model(3)),):
         fixture["version"] = "0.7.0"
         fixture["config"]["submodels"][0]["model"]["version"] = "0.7.0"
         fixture["config"]["submodels"][0]["model"]["config"]["layers"][0]["head1x1"].update(
@@ -158,7 +157,7 @@ def verify(payload, rid):
             str(Path(os.environ.get("SystemRoot", "C:/Windows")) / "System32") if os.name == "nt" else "/usr/bin", "/bin"])
         run(executable, "--smoke-test", env=env, cwd=work)
         run(python, "-B", Path(__file__).resolve(), resources, "--inside", work / "fixtures", env=env, cwd=work)
-        for profile in ("compact", "lite"):
+        for profile in ("compact",):
             run(python, "-B", SOURCE / "tests/portable-runtime/train_smoke.py", resources,
                 work / ("train-" + profile), "--profile", profile, env=env, cwd=work)
         # Opens/closes a real window. No model or device action is invoked.

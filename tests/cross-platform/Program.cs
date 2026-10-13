@@ -25,7 +25,12 @@ try {
     try { BankService.Validate(models); throw new Exception("Case-insensitive duplicate labels accepted"); }
     catch (InvalidDataException) { }
     var liteModels = Enumerable.Range(1, 3).Select(n => new ModelSelection { Label = $"L{n}", ModelProfile = "lite" }).ToArray();
-    BankService.Validate(liteModels);
+    try { BankService.Validate(liteModels); throw new Exception("Saved Lite list accepted"); }
+    catch (InvalidDataException) { }
+    try { BankService.Validate(liteModels, "compact"); throw new Exception("Lite list accepted as Compact"); }
+    catch (InvalidDataException) { }
+    try { BankService.MaxModels("lite"); throw new Exception("Lite profile enabled"); }
+    catch (InvalidDataException) { }
     var fourModels = liteModels.Append(new ModelSelection { Label = "L4", ModelProfile = "lite" }).ToArray();
     try { BankService.Validate(fourModels); throw new Exception("Four-model saved Lite list accepted"); }
     catch (InvalidDataException) { }

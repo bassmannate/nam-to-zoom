@@ -153,7 +153,7 @@ def build(rid, python, cuda=False, adhoc_sign=False):
     for directory in ("tools", "dsp", "training"):
         shutil.copytree(ROOT / directory, resources / directory,
                         ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
-    for profile, folder in (("compact", "templates"), ("lite", "templates-lite")):
+    for profile, folder in (("compact", "templates"),):
         shutil.copytree(ROOT / "release/precompiled" / profile, resources / "release" / folder)
     stomp = resources / ".tooling/stomphacks"
     for folder in ("tools-pedal", "tools", "zoom-zt2"):

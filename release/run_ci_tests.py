@@ -17,7 +17,6 @@ resources = payload if args.rid == "win-x64" else payload / "nam2zoom.app/Conten
 python = resources / ("runtime/python/python.exe" if args.rid == "win-x64" else "runtime/python/bin/python3")
 env = os.environ.copy()
 env.update(NAM2ZOOM_TEMPLATE_DIR=str(resources / "release/templates"),
-           NAM2ZOOM_LITE_TEMPLATE_DIR=str(resources / "release/templates-lite"),
            NAM2ZOOM_DATA_DIR=str(ROOT / ".tooling/ci-data"),
            PYTHONDONTWRITEBYTECODE="1", PYTHONPATH=str(ROOT / "tools"))
 assert subprocess.check_output([str(python), "-c", "import platform; print(platform.machine().lower())"], text=True).strip() == {

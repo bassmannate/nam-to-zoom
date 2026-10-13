@@ -31,6 +31,9 @@ class QualityReviewTests(unittest.TestCase):
             source, di, cache = root / "source.nam", root / "di.wav", root / "cache"
             source.write_bytes(b"source")
             di.write_bytes(b"di")
+            # Rendering is mocked; do not require a native build in the source checkout.
+            renderer = root / "core_render.exe"
+            renderer.write_bytes(b"mock renderer")
 
             def prepare(source, di, work, rate, ir):
                 dry, wet = work / "dry.wav", work / "wet.wav"
@@ -44,6 +47,7 @@ class QualityReviewTests(unittest.TestCase):
                 export.write_text(json.dumps(model(3)))
 
             with patch.object(backend, "classify", return_value={"status": "adaptable", "sample_rate": 44100}), \
+                 patch.object(backend, "RENDERER", renderer), \
                  patch.object(backend, "prepare_pair", side_effect=prepare), \
                  patch.object(backend, "_run", side_effect=train) as trainer, \
                  patch.object(backend, "quality", return_value={"esr": .05384, "correlation": .99}), \

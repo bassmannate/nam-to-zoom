@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .bank import build_bank, load_models, prepare_bank
 from .hybrid import classify
+from .compact import ENABLED_PROFILES
 
 
 def main() -> int:
@@ -17,14 +18,14 @@ def main() -> int:
 
     inspect = sub.add_parser("inspect-hybrid", help="classify a NAM import")
     inspect.add_argument("model", type=Path)
-    inspect.add_argument("--profile", choices=("compact", "lite"), default="compact")
+    inspect.add_argument("--profile", choices=ENABLED_PROFILES, default="compact")
 
     adapt = sub.add_parser("adapt", help="train a compact 44.1 kHz student")
     adapt.add_argument("model", type=Path)
     adapt.add_argument("--training-di", type=Path, required=True)
     adapt.add_argument("--cache", type=Path, required=True)
     adapt.add_argument("--epochs", type=int, default=100)
-    adapt.add_argument("--profile", choices=("compact", "lite"), default="compact")
+    adapt.add_argument("--profile", choices=ENABLED_PROFILES, default="compact")
     adapt.add_argument("--max-esr", type=float, default=0.05)
     adapt.add_argument("--review-quality", action="store_true",
                        help="return quality results for review before using the conversion")
@@ -35,7 +36,7 @@ def main() -> int:
     bank.add_argument("models", nargs="+", type=Path)
     bank.add_argument("--label", action="append", dest="labels")
     bank.add_argument("--output", type=Path, required=True)
-    bank.add_argument("--profile", choices=("compact", "lite"), default="compact")
+    bank.add_argument("--profile", choices=ENABLED_PROFILES, default="compact")
     bank.add_argument("--prepare-only", action="store_true")
 
     install = sub.add_parser("install-bank", help="guarded MS Plus bank replacement")

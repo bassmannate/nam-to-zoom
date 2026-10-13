@@ -55,13 +55,16 @@ class LiteProfileTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "lite.nam"
             path.write_text(json.dumps(lite_model()))
-            self.assertEqual(classify(path, "lite")["status"], "direct")
+            with self.assertRaisesRegex(ValueError, "Lite is disabled"):
+                classify(path, "lite")
             self.assertEqual(classify(path, "compact")["status"], "adaptable")
             with self.assertRaisesRegex(ValueError, "geometry"):
                 load_models([path], profile="compact")
-            self.assertEqual(len(load_models([path], profile="lite")[0][2]), 1871 * 4)
+            with self.assertRaisesRegex(ValueError, "Lite is disabled"):
+                load_models([path], profile="lite")
             path.write_text(json.dumps(model(3)))
-            self.assertEqual(classify(path, "lite")["status"], "adaptable")
+            with self.assertRaisesRegex(ValueError, "Lite is disabled"):
+                classify(path, "lite")
 
     def test_configs_and_cache_are_separate_with_and_without_ir(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -125,6 +128,38 @@ class LiteProfileTests(unittest.TestCase):
                 self.assertEqual(sf.info(dry).frames, sf.info(wet).frames)
 
 
+class DisabledLiteTests(unittest.TestCase):
+    def test_adaptation_rejects_lite_before_inputs_or_cache(self):
+        with self.assertRaisesRegex(ValueError, "Lite is disabled"):
+            adapt.adapt(Path("missing.nam"), Path("missing.wav"), Path("cache"), profile="lite")
+
+    def test_old_lite_manifest_cannot_be_built_or_filled(self):
+        from nam2zoom.bank import build_bank
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "bank.json").write_text(json.dumps({"model_profile": "lite"}))
+            manifest = root / "manifest.json"
+            manifest.write_text(json.dumps({"params": [], "const_blob": {"words": 1871}}))
+            for build in (lambda: build_bank(manifest), lambda: fill_template(root, manifest)):
+                with self.assertRaisesRegex(ValueError, "Lite is disabled"):
+                    build()
+            self.assertFalse((root / "build").exists())
+
+    def test_cli_rejects_lite_for_all_profile_commands(self):
+        import io
+        from contextlib import redirect_stderr
+        from nam2zoom.__main__ import main
+        commands = (["inspect-hybrid", "missing.nam"],
+                    ["adapt", "missing.nam", "--training-di", "missing.wav", "--cache", "cache"],
+                    ["build-bank", "missing.nam", "--output", "bank"])
+        for command in commands:
+            with self.subTest(command=command), patch.object(sys, "argv", ["nam2zoom", *command, "--profile", "lite"]):
+                with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
+                    main()
+                self.assertEqual(error.exception.code, 2)
+
+
+@unittest.skip("A2 Lite is disabled pending further testing")
 @unittest.skipUnless(os.environ.get("NAM2ZOOM_LITE_TEMPLATE_DIR"), "maintainer compiles Lite templates")
 class LiteTemplateTests(unittest.TestCase):
     def test_underreserved_lite_template_is_rejected(self):

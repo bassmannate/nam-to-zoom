@@ -30,7 +30,6 @@ public sealed partial class MainWindow
 
     private readonly ToggleButton compactChoice = new() { Content = "Compact", IsChecked = true, HorizontalAlignment = HorizontalAlignment.Stretch };
 
-    private readonly ToggleButton liteChoice = new() { Content = "Lite", HorizontalAlignment = HorizontalAlignment.Stretch };
 
     private readonly TextBlock modelCount = Text("0 / 10 models", muted: true);
 
@@ -270,15 +269,13 @@ public sealed partial class MainWindow
 
         var epochRow = Field("Training epochs", epochs);
 
-        var profiles = new Grid { ColumnDefinitions = new("*,8,*") };
+        var profiles = new Grid { ColumnDefinitions = new("*") };
 
-        compactChoice.Classes.Add("profile"); liteChoice.Classes.Add("profile");
+        compactChoice.Classes.Add("profile");
 
         compactChoice.Click += (_, _) => { profile.SelectedIndex = 0; SyncProfileChoices(); };
 
-        liteChoice.Click += (_, _) => { profile.SelectedIndex = 1; SyncProfileChoices(); };
-
-        Place(profiles, compactChoice); Place(profiles, liteChoice, col: 2);
+        Place(profiles, compactChoice);
 
         ToolTip.SetTip(epochs, "Compatible converted models are reused without retraining.");
 
@@ -286,7 +283,7 @@ public sealed partial class MainWindow
 
             Rule(), Heading("Bank settings"), Field("Bank profile", profiles),
 
-            Text("Compact leaves room for other effects. Lite uses the full pedal DSP budget and must run alone.", 12, true),
+            Text("Compact leaves room for other effects. A2 Lite is disabled pending further testing.", 12, true),
 
             epochRow } };
 
@@ -403,8 +400,6 @@ public sealed partial class MainWindow
         UpdateModelLimit();
 
         compactChoice.IsChecked = profile.SelectedIndex == 0;
-
-        liteChoice.IsChecked = profile.SelectedIndex == 1;
 
     }
 

@@ -5,14 +5,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .compact import geometry, inspect as inspect_compact
+from .compact import require_enabled_profile, inspect as inspect_compact
 
 
 RENDERABLE = {"WaveNet", "LSTM", "Linear", "Sequential", "SlimmableContainer"}
 
 
 def classify(path: Path, profile="compact") -> dict:
-    geometry(profile)
+    require_enabled_profile(profile)
     if path.suffix.lower() != ".nam":
         raise ValueError("expected a .nam file")
     if path.stat().st_size > 64 * 1024 * 1024:

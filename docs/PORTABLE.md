@@ -17,8 +17,8 @@ Gatekeeper globally. See Apple's supported procedure:
 https://support.apple.com/en-us/102445
 
 Select or drop one to ten `.nam` files. Reorder them and use unique labels of
-one to five ASCII letters, digits, hyphens or underscores. Choose Compact or
-Lite (alone) for the whole bank. Optionally choose a mono cabinet IR WAV for
+one to five ASCII letters, digits, hyphens or underscores. Compact is the only enabled bank profile;
+A2 Lite is disabled pending further testing. Optionally choose a mono cabinet IR WAV for
 each selected model. Set epochs (1–300), choose Build effect and an output folder.
 Compatible converted NAMs build without retraining. Other compatible teachers
 are rendered and retrained using the existing quality-gated NAM pipeline.
@@ -27,9 +27,9 @@ clips in the A/B preview folder before accepting. Declining retains previews
 and cached conversions without building or installing an effect.
 
 Open/Save list uses the existing `.n2zbank.json` list format. Existing exported
-NAMs remain compatible. User data is in `%LOCALAPPDATA%\nam2zoom` on Windows or
+Compact NAMs remain compatible. Saved Lite lists are refused while Lite is disabled. User data is in `%LOCALAPPDATA%\nam2zoom` on Windows or
 `~/Library/Application Support/nam2zoom` on macOS: `Converted_NAM/Compact`,
-`Converted_NAM/Lite`, `adapt-cache`, `Backup`, `sessions`, `logs`, and `training`.
+`adapt-cache`, `Backup`, `sessions`, `logs`, and `training`.
 The Open user files button opens this directory. Build output goes in your
 chosen folder. Copy old exports/backups from beside the legacy Windows EXE if
 desired; they are not deleted or automatically moved.
@@ -48,12 +48,9 @@ only after reading the recorded failure and SAFETY.md.
 Supported identities remain MS-50G+ 1.40, MS-70CDR+ 1.20 and experimental MS-60B+
 1.20. **macOS USB-MIDI hardware verification is pending for every device**.
 A compiled app or CI test does not certify hardware transfers. Custom effects
-can cause slowdown, crackling, freezing or permanent failure. Lite reserves the
-full DSP budget and must run alone. Audition new builds in an unsaved patch;
+can cause slowdown, crackling, freezing or permanent failure. Audition new builds in an unsaved patch;
 saved-patch recall, reboot and real-time audio need separate hardware testing.
 
 The original WinForms project and legacy Windows release script remain available
 while this frontend undergoes parity/manual testing. The full legacy feature and
 safety guide is `docs/USER_GUIDE.md` in the source repository.
-
-Lite banks support at most **3 NAM models**; Compact banks support at most **10**. Only the selected model runs. This model-count limit does not resolve the reported Lite saved-patch/startup failure; keep Lite patches unsaved.

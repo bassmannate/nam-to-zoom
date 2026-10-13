@@ -10,7 +10,7 @@ from nam2zoom.compact import expected_parameters
 
 class BankLimitTests(unittest.TestCase):
     def test_lite_four_files_rejected_before_reading(self):
-        with self.assertRaisesRegex(ValueError, "lite bank needs 1-3"):
+        with self.assertRaisesRegex(ValueError, "Lite is disabled"):
             load_models([Path("missing.nam")] * 4, profile="lite")
 
     def test_template_rejects_oversized_manifest(self):
@@ -18,16 +18,17 @@ class BankLimitTests(unittest.TestCase):
         from nam2zoom.template import fill_template
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
-            (directory / "bank.json").write_text(json.dumps({"model_profile": "lite"}))
+            (directory / "bank.json").write_text(json.dumps({"model_profile": "compact"}))
             manifest = directory / "manifest.json"
-            manifest.write_text(json.dumps({"params": [], "const_blob": {"words": 4 * 1871}}))
+            manifest.write_text(json.dumps({"params": [], "const_blob": {"words": 11 * 659}}))
             with self.assertRaisesRegex(ValueError, "model count"):
                 fill_template(directory / "missing-templates", manifest)
 
     def test_limits_and_build_boundaries(self):
-        self.assertEqual(max_models("lite"), 3)
+        with self.assertRaisesRegex(ValueError, "Lite is disabled"):
+            max_models("lite")
         self.assertEqual(max_models("compact"), 10)
-        for profile, maximum in (("lite", 3), ("compact", 10)):
+        for profile, maximum in (("compact", 10),):
             models = [(Path("fixture.nam"), f"M{i}", bytes(expected_parameters(3, profile) * 4), "fixture")
                       for i in range(maximum + 1)]
             with tempfile.TemporaryDirectory() as temporary:
@@ -36,3 +37,10 @@ class BankLimitTests(unittest.TestCase):
                     prepare_bank(models, output, profile=profile)
                 self.assertFalse(output.exists())
                 self.assertTrue(prepare_bank(models[:maximum], output, profile=profile).is_file())
+
+    def test_lite_bank_cannot_be_prepared(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "bank"
+            with self.assertRaisesRegex(ValueError, "Lite is disabled"):
+                prepare_bank([(Path("fixture.nam"), "AMP", bytes(1871 * 4), "fixture")], output, profile="lite")
+            self.assertFalse(output.exists())

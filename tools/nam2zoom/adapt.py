@@ -11,7 +11,7 @@ import subprocess
 import sys
 import tempfile
 
-from .compact import geometry, inspect as inspect_compact
+from .compact import geometry, inspect as inspect_compact, require_enabled_profile
 from .hybrid import classify
 from .ir import bake, fit_teacher_level, load_ir
 from .platforms import renderer, data_root
@@ -303,6 +303,7 @@ def quality(student: Path, dry: Path, wet: Path, work: Path) -> dict:
 def adapt(source: Path, di: Path, cache: Path, *, epochs: int = 100,
           max_esr: float = 0.05, prepare_only: bool = False,
           review_quality: bool = False, ir: Path | None = None, profile: str = "compact") -> Path:
+    require_enabled_profile(profile)
     source, di, cache = source.resolve(strict=True), di.resolve(strict=True), cache.resolve()
     ir = ir.resolve(strict=True) if ir is not None else None
     if epochs < 1 or epochs > 300 or not 0 < max_esr < 1:

@@ -31,6 +31,7 @@ public sealed class BankService(AppPaths paths, BackendService backend)
 {
     public async Task InspectAsync(ModelSelection model, string profile, CancellationToken token = default)
     {
+        MaxModels(profile);
         var result = await backend.RunAsync(["inspect-hybrid", model.Path, "--profile", profile], token: token);
         result.RequireSuccess();
         using var document = JsonDocument.Parse(result.Output);
@@ -40,7 +41,8 @@ public sealed class BankService(AppPaths paths, BackendService backend)
     }
 
     public static int MaxModels(string profile) => profile switch {
-        "compact" => 10, "lite" => 3,
+        "compact" => 10,
+        "lite" => throw new InvalidDataException("A2 Lite is disabled pending further testing; use Compact."),
         _ => throw new InvalidDataException("Unknown bank profile.")
     };
 
@@ -48,6 +50,8 @@ public sealed class BankService(AppPaths paths, BackendService backend)
     {
         var selectedProfile = profile ?? models.FirstOrDefault()?.ModelProfile ?? "compact";
         var maximum = MaxModels(selectedProfile);
+        if (models.Any(m => m.ModelProfile != "compact"))
+            throw new InvalidDataException("Only Compact model lists are enabled; A2 Lite is disabled pending further testing.");
         if (models.Count < 1 || models.Count > maximum)
             throw new InvalidDataException($"{selectedProfile} banks require 1–{maximum} NAM models.");
         if (models.Any(m => !Regex.IsMatch(m.Label, "^[A-Za-z0-9_-]{1,5}$"))

@@ -19,6 +19,15 @@ PROFILES = {
 }
 
 
+ENABLED_PROFILES = ("compact",)
+
+
+def require_enabled_profile(profile):
+    geometry(profile)
+    if profile not in ENABLED_PROFILES:
+        raise ValueError("A2 Lite is disabled pending further testing; use Compact.")
+
+
 def geometry(profile):
     if profile not in PROFILES:
         raise ValueError(f"unknown model profile: {profile}")

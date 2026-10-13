@@ -10,7 +10,7 @@ import struct
 import subprocess
 from pathlib import Path
 
-from .compact import expected_parameters, geometry, pair_history_bytes, reserved_dsp_load, inspect
+from .compact import expected_parameters, geometry, pair_history_bytes, reserved_dsp_load, inspect, require_enabled_profile
 from .platforms import venv_python
 
 
@@ -25,7 +25,7 @@ MAX_MODELS = 10
 
 
 def max_models(profile):
-    geometry(profile)
+    require_enabled_profile(profile)
     return 3 if profile == "lite" else MAX_MODELS
 
 WORDS_PER_MODEL = expected_parameters(3)
@@ -161,6 +161,7 @@ def prepare_bank(models, output: Path, *, profile="compact") -> Path:
 
 def build_bank(manifest: Path) -> Path:
     profile = json.loads((manifest.parent / "bank.json").read_text()).get("model_profile", "compact")
+    require_enabled_profile(profile)
     templates = ROOT / "release/templates"
     if profile == "lite":
         templates = ROOT / "release/templates-lite"

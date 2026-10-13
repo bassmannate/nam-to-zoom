@@ -18,7 +18,7 @@ public sealed partial class MainWindow : Window
     private readonly ListBox models = new();
     private readonly TextBox label = new() { PlaceholderText = "1–5 characters", MaxLength = 5 };
     private readonly TextBlock ir = new() { Text = "No Cab IR", TextWrapping = Avalonia.Media.TextWrapping.Wrap };
-    private readonly ComboBox profile = new() { ItemsSource = new[] { "Compact", "Lite (use alone)" }, SelectedIndex = 0, HorizontalAlignment = HorizontalAlignment.Stretch };
+    private readonly ComboBox profile = new() { ItemsSource = new[] { "Compact" }, SelectedIndex = 0, HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly NumericUpDown epochs = new EpochUpDown();
     private readonly CheckBox backup = new() { Content = "Full backup before pedal changes", IsChecked = true };
     private readonly Grid controls = new() { RowDefinitions = new("*,Auto") };
@@ -27,7 +27,7 @@ public sealed partial class MainWindow : Window
     private CancellationTokenSource? cancellation;
     private bool busy, deviceBusy, editing, changingProfile;
     private readonly string logPath;
-    private string Profile => profile.SelectedIndex == 1 ? "lite" : "compact";
+    private string Profile => "compact";
     private ModelSelection? Selected => models.SelectedItem as ModelSelection;
 
     public MainWindow()
@@ -180,11 +180,11 @@ public sealed partial class MainWindow : Window
         if (entries.Any(m => !File.Exists(m.Path) || (m.IrPath is not null && (!File.Exists(m.IrPath)
                 || !m.IrPath.EndsWith(".wav", StringComparison.OrdinalIgnoreCase)))))
             throw new InvalidDataException("List contains a missing NAM or invalid cab IR WAV.");
-        if (entries.Any(m => m.ModelProfile is not ("compact" or "lite")) || entries.Select(m => m.ModelProfile).Distinct().Count() != 1)
-            throw new InvalidDataException("All list entries must use the same Compact/Lite profile.");
+        if (entries.Any(m => m.ModelProfile != "compact") || entries.Select(m => m.ModelProfile).Distinct().Count() != 1)
+            throw new InvalidDataException("Only Compact model lists are enabled; A2 Lite is disabled pending further testing.");
         var selectedProfile = entries[0].ModelProfile;
         foreach (var entry in entries) await vm.Banks.InspectAsync(entry, selectedProfile);
-        profile.SelectedIndex = selectedProfile == "lite" ? 1 : 0;
+        profile.SelectedIndex = 0;
         vm.Models.Clear(); foreach (var entry in entries) vm.Models.Add(entry);
         models.SelectedIndex = 0;
     }
@@ -225,7 +225,7 @@ public sealed partial class MainWindow : Window
         + "Autosave OFF, supported identity/firmware and stock-only current and saved patches are required. "
         + "An existing bank is uninstalled first. The transfer cannot be cancelled: keep the pedal powered, connected, and this app open. "
         + "A custom effect can crackle, freeze or permanently disable the device. Use an unsaved patch for initial audition. "
-        + "Lite must run alone. Do not save Lite patches: they can prevent startup. MS-60B+ is experimental; all macOS hardware verification is pending. "
+        + "A2 Lite is disabled pending further testing. MS-60B+ is experimental; all macOS hardware verification is pending. "
         + "Saved-patch and reboot behavior of this build is unverified.";
     private static void OpenFolder(string path) => Process.Start(new ProcessStartInfo(
         OperatingSystem.IsMacOS() ? "/usr/bin/open" : "explorer.exe") { UseShellExecute = false, ArgumentList = { path } });
