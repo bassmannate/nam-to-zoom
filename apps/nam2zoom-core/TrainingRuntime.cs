@@ -3,6 +3,7 @@ namespace Nam2ZoomDesktop;
 public sealed class TrainingRuntime(AppPaths paths, BackendService backend,
     Func<string, IEnumerable<string>, Action<string>, CancellationToken, Task<ProcessResult>>? execute = null)
 {
+    private const string PrepareEnvironment = "import venv,sysconfig,pathlib,sys; venv.EnvBuilder(with_pip=sys.argv[2]=='setup',system_site_packages=True).create(sys.argv[1]); p=pathlib.Path(sys.argv[1])/'Lib'/'site-packages'/'nam2zoom-base.pth'; p.write_text(sysconfig.get_path('purelib')+'\\n')";
     public bool HasPreference => File.Exists(paths.TrainingPreference);
     private Task<ProcessResult> Run(string python, IEnumerable<string> args, Action<string> report, CancellationToken token) =>
         execute is null ? backend.ExecuteAsync(python, args, report, token) : execute(python, args, report, token);
@@ -21,7 +22,7 @@ public sealed class TrainingRuntime(AppPaths paths, BackendService backend,
             // but install CUDA torch locally in a separate user-owned environment.
             var venv = Path.GetDirectoryName(Path.GetDirectoryName(paths.CudaTrainer)!)!;
             var created = await Run(paths.DefaultTrainer,
-                ["-c", "import venv,sysconfig,pathlib,sys; venv.EnvBuilder(with_pip=True,system_site_packages=True).create(sys.argv[1]); p=pathlib.Path(sys.argv[1])/'Lib'/'site-packages'/'nam2zoom-base.pth'; p.write_text(sysconfig.get_path('purelib')+'\\n')", venv], report, token);
+                ["-c", PrepareEnvironment, venv, "setup"], report, token);
             created.RequireSuccess();
             report("Downloading NVIDIA CUDA training packages (several GB). No driver is installed.");
             var installed = await Run(paths.CudaTrainer,
@@ -43,6 +44,15 @@ public sealed class TrainingRuntime(AppPaths paths, BackendService backend,
 
     public async Task VerifyAsync(Action<string> report, CancellationToken token)
     {
+        if (paths.TrainingDevice == "cuda") {
+            // Windows venv launchers and the inherited package path refer to the
+            // old portable folder. Refresh them using the current bundled Python
+            // before invoking the launcher, retaining installed CUDA packages.
+            var venv = Path.GetDirectoryName(Path.GetDirectoryName(paths.CudaTrainer)!)!;
+            var prepared = await Run(paths.DefaultTrainer,
+                ["-c", PrepareEnvironment, venv, "rebase"], report, token);
+            prepared.RequireSuccess();
+        }
         var code = paths.TrainingDevice == "cuda"
             ? "import torch; assert torch.cuda.is_available(), 'Selected NVIDIA GPU is unavailable. Open Training device to retry setup or select CPU.'; x=torch.ones(1,device='cuda'); print('Training GPU: '+torch.cuda.get_device_name(0))"
             : "print('Training device: CPU')";

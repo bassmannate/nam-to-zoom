@@ -14,6 +14,8 @@ the official PyTorch CUDA index into your user-data folder and requires a compat
 NVIDIA driver. The bundled CPU runtime remains intact. Setup verifies a real GPU
 allocation before activating CUDA; failed or cancelled setup keeps the previous
 choice. Choose **Use CPU** to switch back. No separate CUDA toolkit is required.
+The saved CUDA environment is refreshed against the current portable Python
+before GPU verification, so moving or upgrading the app retains downloaded CUDA packages.
 macOS training uses CPU. MPS is not enabled or validated.
 
 These macOS apps have no Developer ID signature or notarization. If macOS blocks

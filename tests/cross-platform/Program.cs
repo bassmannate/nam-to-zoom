@@ -2,12 +2,16 @@ using Nam2ZoomDesktop;
 
 // Optional maintainer integration check: downloads CUDA into an isolated data
 // directory and exercises the same setup service used by the desktop dialog.
-if (args.FirstOrDefault() == "--setup-cuda") {
+if (args.FirstOrDefault() is "--setup-cuda" or "--verify-cuda") {
     var setupPaths = new AppPaths(args[1], args[2]);
     var setupBackend = new BackendService(setupPaths);
     var setupRuntime = new TrainingRuntime(setupPaths, setupBackend);
-    await setupRuntime.SelectAsync(true, Console.WriteLine, default);
+    if (args[0] == "--setup-cuda") await setupRuntime.SelectAsync(true, Console.WriteLine, default);
     await setupRuntime.VerifyAsync(Console.WriteLine, default);
+    if (args[0] == "--verify-cuda") {
+        Console.WriteLine("Portable CUDA relocation verification: PASS");
+        return 0;
+    }
     var probe = await setupBackend.ExecuteAsync(setupPaths.DefaultTrainer,
         ["-c", "import torch; assert torch.version.cuda is None; print('Bundled CPU runtime preserved')"], Console.WriteLine);
     probe.RequireSuccess();
@@ -64,6 +68,16 @@ try {
             throw new Exception("CUDA setup/routing failed");
         var reloaded = new AppPaths(paths.Resources, paths.Data);
         if (reloaded.Trainer != trainingPaths.CudaTrainer) throw new Exception("GPU preference lost after restart");
+        var moved = new AppPaths(Path.Combine(temporary, "new portable folder"), paths.Data);
+        calls.Clear();
+        var movedRuntime = new TrainingRuntime(moved, new BackendService(moved), (python, command, report, token) => {
+            calls.Add((python, command.ToArray()));
+            return Task.FromResult(new ProcessResult(0, "test GPU result"));
+        });
+        await movedRuntime.VerifyAsync(_ => { }, default);
+        if (calls.Count != 2 || calls[0].Python != moved.DefaultTrainer
+            || calls[0].Args[^1] != "rebase" || calls[1].Python != moved.CudaTrainer)
+            throw new Exception("Moved portable runtime was not repaired before CUDA launch");
         await runtime.SelectAsync(false, _ => { }, default);
         if (reloaded.Trainer != reloaded.DefaultTrainer) throw new Exception("CPU fallback failed");
         Console.WriteLine("Training setup, verification failure, cancellation, persistence and CPU fallback: PASS");
