@@ -57,14 +57,16 @@ public sealed class BackendService(AppPaths paths)
         async Task<string> Drain(StreamReader reader)
         {
             var output = new StringBuilder();
-            while (await reader.ReadLineAsync() is { } line) { output.AppendLine(line); report?.Invoke(line); }
+            while (await reader.ReadLineAsync().ConfigureAwait(false) is { } line) { output.AppendLine(line); report?.Invoke(line); }
             return output.ToString();
         }
-        var stdout = Drain(process.StandardOutput);
-        var stderr = Drain(process.StandardError);
-        await process.WaitForExitAsync();
-        await Task.WhenAll(stdout, stderr);
+        // Even buffered reads can complete synchronously. Start both pumps off
+        // the caller's UI thread so a verbose trainer cannot monopolize it.
+        var stdout = Task.Run(() => Drain(process.StandardOutput));
+        var stderr = Task.Run(() => Drain(process.StandardError));
+        await process.WaitForExitAsync().ConfigureAwait(false);
+        await Task.WhenAll(stdout, stderr).ConfigureAwait(false);
         token.ThrowIfCancellationRequested();
-        return new(process.ExitCode, await stdout + await stderr);
+        return new(process.ExitCode, stdout.Result + stderr.Result);
     }
 }

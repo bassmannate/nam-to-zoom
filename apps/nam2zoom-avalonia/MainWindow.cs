@@ -25,8 +25,9 @@ public sealed partial class MainWindow : Window
     private readonly ProgressBar progress = new() { Height = 5, IsVisible = false };
     private readonly Button cancel = new() { Content = "Cancel build", IsEnabled = false };
     private CancellationTokenSource? cancellation;
-    private bool busy, deviceBusy, editing, changingProfile;
-    private readonly string logPath;
+    private bool busy, deviceBusy, editing, changingProfile, logClosed;
+    private readonly BufferedActivityLog activityLog;
+    private readonly DispatcherTimer logTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private string Profile => "compact";
     private ModelSelection? Selected => models.SelectedItem as ModelSelection;
 
@@ -44,7 +45,10 @@ public sealed partial class MainWindow : Window
         };
         DataContext = vm;
         Directory.CreateDirectory(Path.Combine(vm.Paths.Data, "logs"));
-        logPath = Path.Combine(vm.Paths.Data, "logs", DateTime.Now.ToString("yyyyMMdd-HHmmss-fff") + ".log");
+        var logPath = Path.Combine(vm.Paths.Data, "logs", DateTime.Now.ToString("yyyyMMdd-HHmmss-fff") + ".log");
+        activityLog = new(logPath);
+        logTimer.Tick += (_, _) => FlushActivity();
+        logTimer.Start();
         models.ItemsSource = vm.Models;
         models.MinHeight = 180;
         models.SelectionChanged += (_, _) => Detail();
@@ -80,9 +84,18 @@ public sealed partial class MainWindow : Window
         AddHandler(DragDrop.DropEvent, async (_, e) => {
             if (!busy) await Run(() => Add(e.DataTransfer.TryGetFiles()?.Select(f => f.TryGetLocalPath()).OfType<string>() ?? []));
         });
-        Closing += (_, e) => {
+        Closing += async (_, e) => {
             if (deviceBusy) { e.Cancel = true; Report("Keep the app open and the pedal connected until the transfer finishes."); }
             else if (busy) { e.Cancel = true; cancellation?.Cancel(); }
+            else if (!logClosed) {
+                e.Cancel = true;
+                logTimer.Stop();
+                try { await activityLog.DisposeAsync(); }
+                catch (IOException ex) { Debug.WriteLine(ex); }
+                catch (UnauthorizedAccessException ex) { Debug.WriteLine(ex); }
+                logClosed = true;
+                Close();
+            }
         };
         Report("User data: " + vm.Paths.Data);
     }
@@ -114,17 +127,28 @@ public sealed partial class MainWindow : Window
         finally { busy = false; deviceBusy = false; foreach (var control in busyControls) control.IsEnabled = true; progress.IsVisible = false; cancel.IsEnabled = false;
             cancellation?.Dispose(); cancellation = null; }
     }
-    private void Report(string line) => Dispatcher.UIThread.Post(() => {
-        vm.Log += line + Environment.NewLine;
+    private void Report(string line) => activityLog.Report(line);
+
+    private void FlushActivity()
+    {
+        (string Text, string LastLine)? update;
+        try { update = activityLog.TakeUpdate(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
+            logTimer.Stop();
+            vm.Status = activity.Text = "Activity log could not be saved: " + ex.Message;
+            return;
+        }
+        if (update is not { } currentUpdate) return;
+        vm.Log = currentUpdate.Text;
+        var line = currentUpdate.LastLine;
         vm.Status = line;
         activity.Text = line;
-        File.AppendAllText(logPath, line + Environment.NewLine);
         var match = Regex.Match(line, @"^(Patch|File) (\d+)/(\d+):");
         if (match.Success && int.TryParse(match.Groups[2].Value, out var current)
             && int.TryParse(match.Groups[3].Value, out var total) && total > 0) {
             progress.IsIndeterminate = false; progress.Value = 100.0 * current / total;
-        } else progress.IsIndeterminate = true;
-    });
+        } else progress.IsIndeterminate = busy;
+    }
     private async Task Add(IEnumerable<string> paths)
     {
         foreach (var path in paths) {

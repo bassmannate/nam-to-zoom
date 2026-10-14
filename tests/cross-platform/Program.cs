@@ -82,7 +82,31 @@ try {
         if (reloaded.Trainer != reloaded.DefaultTrainer) throw new Exception("CPU fallback failed");
         Console.WriteLine("Training setup, verification failure, cancellation, persistence and CPU fallback: PASS");
     }
-    var result = await backend.ExecuteAsync(Environment.ProcessPath!, ["--child", "spaced/Кабинет/model name.nam"]);
+    var activityPath = Path.Combine(temporary, "activity.log");
+    var activity = new BufferedActivityLog(activityPath);
+    ProcessResult result;
+    try {
+        var context = new CountingSynchronizationContext();
+        var previous = SynchronizationContext.Current;
+        Task<ProcessResult> running;
+        SynchronizationContext.SetSynchronizationContext(context);
+        try {
+            running = backend.ExecuteAsync(Environment.ProcessPath!, ["--child", "spaced/Кабинет/model name.nam"], activity.Report);
+        } finally { SynchronizationContext.SetSynchronizationContext(previous); }
+        result = await running;
+        if (context.Posts != 0) throw new Exception("Backend output captured the UI synchronization context");
+        activity.Report(new string('x', BufferedActivityLog.DisplayLimit * 2));
+        activity.Report("final status");
+        var update = activity.TakeUpdate() ?? throw new Exception("Activity update missing");
+        if (update.Text.Length > BufferedActivityLog.DisplayLimit || !update.Text.EndsWith("final status" + Environment.NewLine)
+            || update.LastLine != "final status" || activity.TakeUpdate() is not null)
+            throw new Exception("Activity display is unbounded, stale or repeatedly refreshed");
+    } finally { await activity.DisposeAsync(); }
+    var savedLog = await File.ReadAllTextAsync(activityPath);
+    if (savedLog.Split('\n').Length != 6004 || !savedLog.Contains("stdout 2999") || !savedLog.Contains("stderr 2999")
+        || !savedLog.EndsWith("final status" + Environment.NewLine))
+        throw new Exception("Full activity log was truncated or not flushed before shutdown");
+    Console.WriteLine("Backend avoids UI context; 6,000 streamed lines persisted with bounded, batched display: PASS");
     if (result.Exit != 7 || !result.Output.Contains("spaced/Кабинет/model name.nam")
         || !result.Output.Contains("stderr 2999") || !result.Output.Contains("stdout 2999"))
         throw new Exception($"Argument encoding or concurrent pipe draining failed (exit {result.Exit}): {result.Output[..Math.Min(500, result.Output.Length)]}");
@@ -114,3 +138,13 @@ try {
     Console.WriteLine("Shared paths, DI hash, Unicode arguments, both output streams, cancellation and conversion export: PASS");
     return 0;
 } finally { Directory.Delete(temporary, true); }
+
+sealed class CountingSynchronizationContext : SynchronizationContext
+{
+    public int Posts;
+    public override void Post(SendOrPostCallback callback, object? state)
+    {
+        Interlocked.Increment(ref Posts);
+        ThreadPool.QueueUserWorkItem(_ => callback(state));
+    }
+}
