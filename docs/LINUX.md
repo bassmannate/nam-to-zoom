@@ -40,6 +40,8 @@ this project never runs `sudo` for you.
 that contains `setup-linux.sh`), except the install steps for uv, .NET and
 cl6x.
 
+You can check all of these with `./dev-setup-linux.sh`.
+
 - `git`
 - **.NET 10 SDK** - the app is written in C#. Download the installer script
   from https://dot.net/v1/dotnet-install.sh and run it with `--channel 10.0`:
@@ -96,6 +98,13 @@ cl6x.
     Linux program (used with `--silicon_version=6740`).
   - The compiler is **not redistributed**: never commit it to git and never
     bundle it with releases.
+
+## Checking your setup (dev-setup-linux.sh)
+
+`./dev-setup-linux.sh` checks the prerequisites above and prints, for each
+missing item, the exact fix command and why it is needed. It installs
+nothing and never uses `sudo`. It exits non-zero if a required item
+(dotnet, uv, cl6x) is missing.
 
 ## Setting up (setup-linux.sh)
 

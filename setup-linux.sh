@@ -176,6 +176,19 @@ echo "  dotnet run --project $root/apps/nam2zoom-avalonia -- --smoke-test"
 echo "Note: building a N2Z bank from this source checkout still requires the TI"
 echo "cl6x toolchain (tools/nam2zoom/bank.py); this script does not install it."
 
+if ! command -v dotnet >/dev/null 2>&1; then
+    if [[ -x "$HOME/.dotnet/dotnet" ]]; then
+        echo "Note: dotnet is installed at $HOME/.dotnet/dotnet but is not on this"
+        echo "shell's PATH. Open a new terminal (see docs/LINUX.md) or use the full"
+        echo "path, for example:"
+        echo "  $HOME/.dotnet/dotnet build $root/apps/nam2zoom-avalonia"
+    else
+        echo "Note: dotnet was not found. Install the .NET 10 SDK as described in"
+        echo "docs/LINUX.md, then build and run the GUI."
+    fi
+fi
+
+
 
 
 
