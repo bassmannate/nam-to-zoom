@@ -36,28 +36,62 @@ yet; everything else was verified on real hardware or on the host machine.
 Install these yourself first. Package names below are Debian/Ubuntu style;
 this project never runs `sudo` for you.
 
+**All commands in this guide are run from the repository root** (the folder
+that contains `setup-linux.sh`), except the install steps for uv, .NET and
+cl6x.
+
 - `git`
-- **.NET 10 SDK** - the app is written in C#
-- **uv** - installs Python and the two virtual environments
+- **.NET 10 SDK** - the app is written in C#. Download the installer script
+  from https://dot.net/v1/dotnet-install.sh and run it with `--channel 10.0`:
+
+  ```bash
+  curl -LsSf https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh
+  bash dotnet-install.sh --channel 10.0
+  ```
+
+  It installs to `~/.dotnet`. Add it to your PATH (and set `DOTNET_ROOT`):
+
+  ```bash
+  export PATH="$HOME/.dotnet:$PATH"
+  export DOTNET_ROOT="$HOME/.dotnet"
+  ```
+
+- **uv** - installs Python and the two virtual environments. Install it before
+  running `setup-linux.sh`:
+
+  ```bash
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  ```
+
+  It installs to `~/.local/bin`. Open a new terminal afterwards, or run:
+
+  ```bash
+  export PATH="$HOME/.local/bin:$PATH"
+  ```
 - `cmake`, `ninja`, `gcc`, `g++`, `clang` - build the native audio renderer
 - `libasound2` (ALSA, needed for USB-MIDI) and `libasound2-dev` - provides
   `/usr/include/alsa/asoundlib.h`, needed if python-rtmidi has to be compiled
   from source (see the `STOMP_PYTHON` option below)
 - ALSA sequencer kernel support: the `snd_seq` module must be loaded
+- **`audio` group**: your user must be in the `audio` group, because
+  `/dev/snd/seq` is group `audio`. Without it the GUI shows "pedal detection
+  unavailable". Add yourself with `sudo usermod -aG audio $USER`, then **log out
+  and back in** (a new login is required for the change to take effect). To
+  check: `id -nG | grep -w audio`.
 - `libportaudio` (`libportaudio2`) - only a warning if missing; training does
   not need it, some audio helpers do
 - **TI C6000 C-compiler (cl6x) version 8.3.1**, installed by hand:
   - Get the installer from TI's code-generation tools download archive
-    (https://software-dl.ti.com/codegen/non-esd/downloads/download_archive.htm).
-    (Which exact file to download is **unverified** from this guide.)
+    (https://software-dl.ti.com/codegen/non-esd/downloads/download_archive.htm);
+    this link was verified on a clean account.
   - Install it **inside the repository**, at exactly
     `.tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1`. Bank builds look for the compiler
     at `<repo>/.tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1/bin/cl6x` and nowhere else
     (`tools/nam2zoom/bank.py`), and `setup-linux.sh` does not install it or
     look anywhere else for you.
-  - Unattended install, run from the repository root:
+  - Unattended install, run from the repository root (verified on a clean
+    account):
     `--mode unattended --prefix "$PWD/.tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1"`
-    (the rest of the installer command line is **unverified** here).
   - The installer is a 32-bit program; `bin/cl6x` itself is a 64-bit static
     Linux program (used with `--silicon_version=6740`).
   - The compiler is **not redistributed**: never commit it to git and never
@@ -111,7 +145,9 @@ dotnet run --project apps/nam2zoom-avalonia -- --gui-smoke-test
 ```
 
 The first test must print, in order: `Backend runtime imports OK`, then
-`Training runtime imports OK`. Both tests were verified on the host.
+`Training runtime imports OK`. The GUI test opens the main window only briefly
+and closes it on its own; this is normal. Both tests were verified on the
+host.
 
 ## First use
 
