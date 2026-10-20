@@ -54,9 +54,11 @@ detail() {
 }
 
 # Informational version string for an OK line when the tool is on PATH.
+# First line only: clang --version prints several lines and every OK line
+# must stay on one line.
 version_of() {
     local name="$1" v
-    v="$("$name" --version 2>/dev/null)"
+    v="$("$name" --version 2>/dev/null | head -n 1)"
     v="${v#"$name "}"
     if [[ -n "$v" ]]; then printf '%s' "$v"; else printf 'version unknown'; fi
 }
