@@ -82,9 +82,7 @@ elif [[ -x "$HOME/.dotnet/dotnet" ]]; then
         '  export PATH="$HOME/.dotnet:$PATH"' \
         '  export DOTNET_ROOT="$HOME/.dotnet"' \
         "An export PATH line only lasts for this terminal window." \
-        "To make it permanent, add these lines to your ~/.bashrc and open a new terminal:" \
-        '  export PATH="$HOME/.dotnet:$PATH"' \
-        '  export DOTNET_ROOT="$HOME/.dotnet"' \
+        "To make it permanent, add the same lines to your ~/.bashrc and open a new terminal." \
         "or use the full path, for example:" \
         "  $HOME/.dotnet/dotnet build $root/apps/nam2zoom-avalonia"
 else
@@ -100,9 +98,7 @@ else
         '  export PATH="$HOME/.dotnet:$PATH"' \
         '  export DOTNET_ROOT="$HOME/.dotnet"' \
         "An export PATH line only lasts for this terminal window." \
-        "To make it permanent, add these lines to your ~/.bashrc and open a new terminal:" \
-        '  export PATH="$HOME/.dotnet:$PATH"' \
-        '  export DOTNET_ROOT="$HOME/.dotnet"'
+        "To make it permanent, add the same lines to your ~/.bashrc and open a new terminal."
 fi
 
 # 2. uv - REQUIRED. uv creates the two Python environments
@@ -118,7 +114,7 @@ else
             "setup-linux.sh:38 uses 'command -v uv' only, so setup would fail" \
             "even though uv is installed (docs/LINUX.md:66-70)."
         detail Fix \
-            "add uv to this shell's PATH in docs/LINUX.md:" \
+            "add uv to this terminal's PATH:" \
             '  export PATH="$HOME/.local/bin:$PATH"' \
             "An export PATH line only lasts for this terminal window." \
             "To make it permanent, add this line to your ~/.bashrc and open a new terminal:" \
