@@ -16,6 +16,12 @@ yet; everything else was verified on real hardware or on the host machine.
   epochs per model** - built and installed from the GUI, readback verified,
   each of the three slots sounds distinct, the effect saves into a patch and
   still works after a pedal reboot.
+- **100-epoch training**: verified on a Zoom MS-60B+ firmware 1.20. A 100-epoch
+  bank was trained, built, installed from the GUI, readback verified, the effect
+  saved into a patch, and still worked after a pedal reboot.
+- The GUI footer shows the Linux-specific note on Linux ("USB-MIDI verified on
+  Linux with a Zoom MS-60B+ (fw 1.20)."); Windows and macOS keep their existing
+  text byte-for-byte.
 - The app's two smoke tests (see below) - verified.
 
 ## What does not work (or is unverified)
@@ -24,14 +30,8 @@ yet; everything else was verified on real hardware or on the host machine.
   Windows-only feature in this codebase; Linux trains on the CPU only.
 - **A2 Lite profile**: disabled in the project. Compact is the only enabled
   profile.
-- **100-epoch training**: verified on a Zoom MS-60B+ firmware 1.20. A 100-epoch
-  bank was trained, built, installed from the GUI, readback verified, the effect
-  saved into a patch, and still worked after a pedal reboot.
 - **Other pedals on Linux (MS-50G+, MS-70CDR+): unverified.** Only the
   MS-60B+ fw 1.20 has been verified on this port.
-- The GUI footer shows the Linux-specific note on Linux ("USB-MIDI verified on
-  Linux with a Zoom MS-60B+ (fw 1.20)."); Windows and macOS keep their existing
-  text byte-for-byte.
 
 ## Prerequisites
 
@@ -53,7 +53,7 @@ You can check all of these with `./dev-setup-linux.sh`.
   bash dotnet-install.sh --channel 10.0
   ```
 
-  It installs to `~/.dotnet`. Add it to your PATH (and set `DOTNET_ROOT`):
+  It installs to `~/.dotnet`. Add it to your PATH (and set `DOTNET_ROOT`). An export PATH line only lasts for this terminal window. To make it permanent, add these lines to your `~/.bashrc` and open a new terminal:
 
   ```bash
   export PATH="$HOME/.dotnet:$PATH"
@@ -67,7 +67,7 @@ You can check all of these with `./dev-setup-linux.sh`.
   curl -LsSf https://astral.sh/uv/install.sh | sh
   ```
 
-  It installs to `~/.local/bin`. Open a new terminal afterwards, or run:
+  It installs to `~/.local/bin`. An export PATH line only lasts for this terminal window. To make it permanent, add this line to your `~/.bashrc` and open a new terminal:
 
   ```bash
   export PATH="$HOME/.local/bin:$PATH"
@@ -84,18 +84,35 @@ You can check all of these with `./dev-setup-linux.sh`.
   check: `id -nG | grep -w audio`.
 - `libportaudio` (`libportaudio2`) - only a warning if missing; training does
   not need it, some audio helpers do
-- **TI C6000 C-compiler (cl6x) version 8.3.1**, installed by hand:
+- **TI C6000 C-compiler (cl6x) version 8.3.1**, installed by hand once:
   - Get the installer from TI's code-generation tools download archive
     (https://software-dl.ti.com/codegen/non-esd/downloads/download_archive.htm);
     this link was verified on a clean account.
-  - Install it **inside the repository**, at exactly
-    `.tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1`. Bank builds look for the compiler
-    at `<repo>/.tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1/bin/cl6x` and nowhere else
-    (`tools/nam2zoom/bank.py`), and `setup-linux.sh` does not install it or
-    look anywhere else for you.
-  - Unattended install, run from the repository root (verified on a clean
-    account):
-    `--mode unattended --prefix "$PWD/.tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1"`
+  - Run it once from the repository root, replacing `<installer>` with the
+    downloaded file name:
+
+    ```bash
+    chmod +x ./<installer>
+    ./<installer> --mode unattended --prefix "$PWD/.tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1"
+    ```
+
+    `chmod +x ./<installer>` = make the downloaded TI installer executable;
+    `./<installer>` = run the TI installer file you downloaded;
+    `--mode unattended` = silent install, no wizard clicks or user input;
+    `--prefix "$PWD/..."` = install location inside this repo at
+    `.tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1`.
+  - It is installed once, lives inside the repo folder, needs no PATH setup
+    and survives every terminal restart: bank builds look for the compiler at
+    the fixed path `.tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1/bin/cl6x` and
+    nowhere else (`tools/nam2zoom/bank.py`); `setup-linux.sh` does not
+    install it or look anywhere else for you.
+  - One-line check:
+
+    ```bash
+    ls -d .tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1/bin/cl6x
+    ```
+  - Running `cl6x` by hand may print "no source files" - that is normal,
+    it just means no source file was given on the command line.
   - The installer is a 32-bit program; `bin/cl6x` itself is a 64-bit static
     Linux program (used with `--silicon_version=6740`).
   - The compiler is **not redistributed**: never commit it to git and never

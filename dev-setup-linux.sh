@@ -81,7 +81,11 @@ elif [[ -x "$HOME/.dotnet/dotnet" ]]; then
         "open a new terminal (see docs/LINUX.md) or run:" \
         '  export PATH="$HOME/.dotnet:$PATH"' \
         '  export DOTNET_ROOT="$HOME/.dotnet"' \
-        "or use the full path, for example (docs/LINUX.md:131-132):" \
+        "An export PATH line only lasts for this terminal window." \
+        "To make it permanent, add these lines to your ~/.bashrc and open a new terminal:" \
+        '  export PATH="$HOME/.dotnet:$PATH"' \
+        '  export DOTNET_ROOT="$HOME/.dotnet"' \
+        "or use the full path, for example:" \
         "  $HOME/.dotnet/dotnet build $root/apps/nam2zoom-avalonia"
 else
     missing=$((missing + 1))
@@ -90,9 +94,13 @@ else
         "the app is C#; 'dotnet build', 'dotnet run' and both smoke tests need" \
         "the .NET 10 SDK (docs/LINUX.md:124-145)."
     detail Fix \
-        "from the repository root (docs/LINUX.md:47-57):" \
+        "from the repository root:" \
         '  curl -LsSf https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh' \
         '  bash dotnet-install.sh --channel 10.0' \
+        '  export PATH="$HOME/.dotnet:$PATH"' \
+        '  export DOTNET_ROOT="$HOME/.dotnet"' \
+        "An export PATH line only lasts for this terminal window." \
+        "To make it permanent, add these lines to your ~/.bashrc and open a new terminal:" \
         '  export PATH="$HOME/.dotnet:$PATH"' \
         '  export DOTNET_ROOT="$HOME/.dotnet"'
 fi
@@ -110,17 +118,22 @@ else
             "setup-linux.sh:38 uses 'command -v uv' only, so setup would fail" \
             "even though uv is installed (docs/LINUX.md:66-70)."
         detail Fix \
-            "add uv to this shell's PATH (docs/LINUX.md:66-70):" \
+            "add uv to this shell's PATH in docs/LINUX.md:" \
             '  export PATH="$HOME/.local/bin:$PATH"' \
-            "or open a new terminal."
+            "An export PATH line only lasts for this terminal window." \
+            "To make it permanent, add this line to your ~/.bashrc and open a new terminal:" \
+            '  export PATH="$HOME/.local/bin:$PATH"'
     else
         status MISSING "uv"
         detail Why \
             "uv creates the two Python environments (setup-linux.sh:132-139)."
         detail Fix \
-            "from the repository root (docs/LINUX.md:62-70):" \
+            "from the repository root:" \
             '  curl -LsSf https://astral.sh/uv/install.sh | sh' \
             "then open a new terminal, or run:" \
+            '  export PATH="$HOME/.local/bin:$PATH"' \
+            "An export PATH line only lasts for this terminal window." \
+            "To make it permanent, add this line to your ~/.bashrc and open a new terminal:" \
             '  export PATH="$HOME/.local/bin:$PATH"'
     fi
 fi
@@ -166,10 +179,23 @@ else
         "bank builds invoke it (tools/nam2zoom/bank.py:21, :176);" \
         "setup-linux.sh does not install it."
     detail Fix \
-        "download TI C6000 CGT 8.3.1 from the archive (docs/LINUX.md:84-94):" \
+        "download TI C6000 CGT 8.3.1 from the archive in docs/LINUX.md:" \
         "  https://software-dl.ti.com/codegen/non-esd/downloads/download_archive.htm" \
-        "then from the repository root run the unattended installer with:" \
-        '  --mode unattended --prefix "$PWD/.tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1"'
+        "then from the repository root run once:" \
+        '  chmod +x ./<installer>' \
+        '  ./<installer> --mode unattended --prefix "$PWD/.tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1"' \
+        "  chmod +x ./<installer>   = make the downloaded TI installer executable" \
+        "  ./<installer>            = run the TI installer file you downloaded" \
+        "  --mode unattended        = silent install: no wizard, no clicks" \
+        '  --prefix "$PWD/..."      = install location inside this repo:' \
+        "    .tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1" \
+        "Installed once inside the repo folder; it needs no PATH setup and" \
+        "the same install survives every terminal restart. Bank builds look" \
+        "for cl6x at the fixed path .tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1/bin/cl6x" \
+        "(tools/nam2zoom/bank.py); setup-linux.sh does not install it or look" \
+        "anywhere else for you." \
+        "One-line check: ls -d .tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1/bin/cl6x" \
+        "If you run cl6x by hand and it prints \"no source files\", that is normal."
 fi
 
 # 6. ALSA header - warning. Same path as setup-linux.sh:115; print both
