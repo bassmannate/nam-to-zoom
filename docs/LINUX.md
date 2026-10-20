@@ -88,19 +88,23 @@ You can check all of these with `./dev-setup-linux.sh`.
   - Get the installer from TI's code-generation tools download archive
     (https://software-dl.ti.com/codegen/non-esd/downloads/download_archive.htm);
     this link was verified on a clean account.
-  - Run it once from the repository root, replacing `<installer>` with the
-    downloaded file name:
+  - Put the downloaded `.bin` outside the repo (for example `~/Downloads`).
+    Run the installer once from the repository root, with the shell in the repo
+    root and the full path to the `.bin`, so the installer file itself never
+    lands in the repo:
 
     ```bash
-    chmod +x ./<installer>
-    ./<installer> --mode unattended --prefix "$PWD/.tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1"
+    chmod +x ~/Downloads/<installer>.bin
+    ~/Downloads/<installer>.bin --mode unattended --prefix "$PWD/.tooling/cgt-8.3.1"
     ```
 
-    `chmod +x ./<installer>` = make the downloaded TI installer executable;
-    `./<installer>` = run the TI installer file you downloaded;
+    `chmod +x ~/Downloads/<installer>.bin` = make the downloaded TI installer executable;
+    `~/Downloads/<installer>.bin ...` = run the TI installer from the repo root;
+    the `.bin` stays in `~/Downloads`, never in this repo;
     `--mode unattended` = silent install, no wizard clicks or user input;
-    `--prefix "$PWD/..."` = install location inside this repo at
-    `.tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1`.
+    `--prefix "$PWD/.tooling/cgt-8.3.1"` = install location; the TI installer
+    appends its own `ti-cgt-c6000_8.3.1` folder itself, giving
+    `.tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1/bin/cl6x`.
   - It is installed once, lives inside the repo folder, needs no PATH setup
     and survives every terminal restart: bank builds look for the compiler at
     the fixed path `.tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1/bin/cl6x` and

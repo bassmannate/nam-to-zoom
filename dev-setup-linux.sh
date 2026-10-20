@@ -177,14 +177,16 @@ else
     detail Fix \
         "download TI C6000 CGT 8.3.1 from the archive in docs/LINUX.md:" \
         "  https://software-dl.ti.com/codegen/non-esd/downloads/download_archive.htm" \
-        "then from the repository root run once:" \
-        '  chmod +x ./<installer>' \
-        '  ./<installer> --mode unattended --prefix "$PWD/.tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1"' \
-        "  chmod +x ./<installer>   = make the downloaded TI installer executable" \
-        "  ./<installer>            = run the TI installer file you downloaded" \
+        "then from the repository root run once (the .bin stays in ~/Downloads, never in this repo):" \
+        '  chmod +x ~/Downloads/<installer>.bin' \
+        '  ~/Downloads/<installer>.bin --mode unattended --prefix "$PWD/.tooling/cgt-8.3.1"' \
+        "  chmod +x ~/Downloads/<installer>.bin = make the downloaded TI installer executable" \
+        "  ~/Downloads/<installer>.bin ...      = run the TI installer from the repo root;" \
+        "    the .bin stays in ~/Downloads, never in the repo" \
         "  --mode unattended        = silent install: no wizard, no clicks" \
-        '  --prefix "$PWD/..."      = install location inside this repo:' \
-        "    .tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1" \
+        '  --prefix "$PWD/.tooling/cgt-8.3.1" = install location; the TI installer' \
+        "    appends its own ti-cgt-c6000_8.3.1 folder itself, giving" \
+        "    .tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1/bin/cl6x" \
         "Installed once inside the repo folder; it needs no PATH setup and" \
         "the same install survives every terminal restart. Bank builds look" \
         "for cl6x at the fixed path .tooling/cgt-8.3.1/ti-cgt-c6000_8.3.1/bin/cl6x" \
