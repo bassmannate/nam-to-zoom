@@ -24,12 +24,14 @@ yet; everything else was verified on real hardware or on the host machine.
   Windows-only feature in this codebase; Linux trains on the CPU only.
 - **A2 Lite profile**: disabled in the project. Compact is the only enabled
   profile.
-- **100-epoch training: unverified on Linux.** Only 10-epoch training has been
-  run and tested so far; a 100-epoch bank test is the optional next step.
+- **100-epoch training**: verified on a Zoom MS-60B+ firmware 1.20. A 100-epoch
+  bank was trained, built, installed from the GUI, readback verified, the effect
+  saved into a patch, and still worked after a pedal reboot.
 - **Other pedals on Linux (MS-50G+, MS-70CDR+): unverified.** Only the
   MS-60B+ fw 1.20 has been verified on this port.
-- The GUI footer still says "macOS USB-MIDI verification pending"; a Linux note
-  has not been added yet (no code was changed for this document).
+- The GUI footer shows the Linux-specific note on Linux ("USB-MIDI verified on
+  Linux with a Zoom MS-60B+ (fw 1.20)."); Windows and macOS keep their existing
+  text byte-for-byte.
 
 ## Prerequisites
 
