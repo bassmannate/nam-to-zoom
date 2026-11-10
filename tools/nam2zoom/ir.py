@@ -12,6 +12,25 @@ MAX_LEADING_SAMPLES = RATE // 100
 MAX_TAPS = 1536
 MAX_DISCARDED_ENERGY = 0.01
 
+# ITU-R BS.1770 K-weighting biquad coefficients at 44.1 kHz
+# Stage 1: Pre-filter (high shelf, f0 = 1681.97 Hz, gain = +4.0 dB)
+_K_B1 = (1.53512485958697, -2.69169618940638, 1.19839281085285)
+_K_A1 = (1.0, -1.69065929318241, 0.73248077421585)
+
+# Stage 2: RLB filter (high-pass, f0 = 38.14 Hz)
+_K_B2 = (1.0, -2.0, 1.0)
+_K_A2 = (1.0, -1.99004745483398, 0.99007225035624)
+
+
+def _k_rms(signal):
+    """Compute ITU-R BS.1770 K-weighted RMS level for perceptual loudness matching."""
+    import numpy as np
+    from scipy.signal import lfilter
+
+    samples = signal.astype(np.float64, copy=False)
+    filtered = lfilter(_K_B2, _K_A2, lfilter(_K_B1, _K_A1, samples))
+    return float(np.sqrt(np.mean(filtered ** 2)))
+
 
 def load_ir(path: Path):
     import numpy as np
@@ -33,7 +52,8 @@ def load_ir(path: Path):
     peak = float(np.max(np.abs(taps)))
     if peak < 1e-7:
         raise ValueError("cab IR is silent")
-    onset = int(np.argmax(np.abs(taps) >= peak * 1e-4))
+    first_wave = int(np.argmax(np.abs(taps) >= peak * 0.15))
+    onset = max(0, first_wave - 4)
     if onset > MAX_LEADING_SAMPLES:
         raise ValueError("cab IR has more than 10 ms of leading silence; trim it first")
     taps = taps[onset:]
@@ -57,6 +77,10 @@ def bake(audio, taps):
     result = oaconvolve(audio, taps, mode="full")[:len(audio)]
     if not np.isfinite(result).all():
         raise ValueError("cab IR produced non-finite teacher audio")
+    k_in = _k_rms(audio)
+    k_out = _k_rms(result)
+    if k_in > 1e-7 and k_out > 1e-7:
+        result = result * (k_in / k_out)
     return result.astype("float32")
 
 

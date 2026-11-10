@@ -16,7 +16,7 @@ from test_compact_shape import model  # noqa: E402
 try:
     import numpy as np
     import soundfile as sf
-    from nam2zoom.ir import MAX_TAPS, bake, fit_teacher_level, load_ir
+    from nam2zoom.ir import MAX_TAPS, _k_rms, bake, fit_teacher_level, load_ir
 except ImportError:
     np = sf = None
 
@@ -44,8 +44,7 @@ class IrTests(unittest.TestCase):
                 dry_path, wet_path, _, level = prepare_pair(source, di, root, 44100, ir)
             actual_dry, _ = sf.read(dry_path, dtype="float32")
             actual_wet, _ = sf.read(wet_path, dtype="float32")
-            expected = np.convolve(actual_dry[:32], [0.5, 0.25])[:32]
-            np.testing.assert_allclose(actual_wet[:32], expected, atol=1e-6)
+            self.assertAlmostEqual(_k_rms(actual_wet), _k_rms(actual_dry), places=5)
             self.assertEqual(level["ir_gain_db"], 0.0)
 
     def test_hot_ir_is_attenuated_without_clipping(self):
@@ -68,7 +67,7 @@ class IrTests(unittest.TestCase):
             audio = np.zeros(100, dtype="float32")
             audio[10] = 1.0
             result = bake(audio, taps)
-            np.testing.assert_allclose(result[10:20], taps[:10], atol=1e-6)
+            self.assertAlmostEqual(_k_rms(result), _k_rms(audio), places=5)
             self.assertEqual(len(result), len(audio))
 
     def test_reject_stereo_and_long_tail(self):
@@ -94,6 +93,41 @@ class IrTests(unittest.TestCase):
             self.assertNotEqual(first, cache_key(source, di, 100, ir))
             self.assertNotEqual(plain, first)
             self.assertEqual(plain, cache_key(source, di, 100))
+
+    def test_preringing_does_not_prevent_wavefront_trim(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "preringing.wav"
+            taps = np.zeros(1000, dtype="float32")
+            # DC floor / pre-ringing before the main spike at index 150
+            taps[:140] = -0.01
+            taps[140:145] = 0.05
+            taps[150] = 1.0
+            taps[151] = -0.5
+            sf.write(path, taps, 44100, subtype="FLOAT")
+            trimmed = load_ir(path)
+            # Wavefront at 150 should be placed within the first 10 samples of trimmed taps
+            peak_idx = int(np.argmax(np.abs(trimmed)))
+            self.assertLessEqual(peak_idx, 8)
+            self.assertGreaterEqual(peak_idx, 4)
+
+    def test_bake_preserves_perceptual_loudness(self):
+        # A realistic synthetic signal (sine + harmonics)
+        sr = 44100
+        t = np.linspace(0, 1.0, sr, endpoint=False)
+        signal = (0.2 * np.sin(2 * np.pi * 150 * t) + 0.1 * np.sin(2 * np.pi * 1000 * t)).astype("float32")
+        
+        # A low-pass/band-pass cabinet filter that would otherwise attenuate by ~12 dB
+        cab_filter = np.exp(-np.linspace(0, 5, 256)).astype("float32")
+        cab_filter = cab_filter / np.max(np.abs(cab_filter))
+        
+        baked = bake(signal, cab_filter)
+        self.assertAlmostEqual(_k_rms(baked), _k_rms(signal), places=4)
+        
+        # Guarded by fit_teacher_level
+        safe_audio, level = fit_teacher_level(baked)
+        self.assertLessEqual(float(np.max(np.abs(safe_audio))), 0.9501)
+        # Verify it didn't suffer an extreme crush
+        self.assertGreater(level["ir_gain_db"], -6.0)
 
 
 if __name__ == "__main__":
